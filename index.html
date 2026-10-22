@@ -16,6 +16,9 @@
   <!-- Firebase Compat SDKs -->
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+  <!-- Thư viện Biểu đồ Chart.js & Hiệu ứng Pháo hoa Confetti -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
 
   <style>
     :root {
@@ -574,6 +577,146 @@
       line-height: 1.3;
       margin-top: -4px;
     }
+    /* ========================================================
+       TÍNH NĂNG MỚI: MASCOT, STREAK, CHARTS & HŨ TIẾT KIỆM
+       ======================================================== */
+    /* 1. Mascot & Streak Header */
+    .gamification-bar {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 15px;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    .mascot-box {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      padding: 12px 18px;
+    }
+    .mascot-face {
+      font-size: 2.2rem;
+      animation: bounce 2s infinite ease-in-out;
+    }
+    @keyframes bounce {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-5px); }
+    }
+    .mascot-text {
+      font-size: 0.88rem;
+      line-height: 1.4;
+    }
+    .mascot-tag {
+      font-weight: 700;
+      display: inline-block;
+      margin-bottom: 2px;
+    }
+    .streak-badge {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 18px;
+      background: linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(239, 68, 68, 0.2));
+      border: 1px solid rgba(245, 158, 11, 0.4);
+      border-radius: 14px;
+      font-weight: 700;
+      color: #fbbf24;
+      white-space: nowrap;
+    }
+
+    /* Chế độ sinh tồn khẩn cấp */
+    .survival-active {
+      border: 2px solid #ef4444 !important;
+      box-shadow: 0 0 25px rgba(239, 68, 68, 0.4) !important;
+      animation: alert-pulse 1.8s infinite;
+    }
+    @keyframes alert-pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.85; }
+    }
+
+    /* 2. Charts Section */
+    .charts-grid {
+      display: grid;
+      grid-template-columns: 1fr 1.3fr;
+      gap: 20px;
+      margin-bottom: 24px;
+    }
+    .chart-card {
+      padding: 20px;
+      position: relative;
+      min-height: 280px;
+    }
+    .chart-title {
+      font-size: 0.95rem;
+      font-weight: 600;
+      margin-bottom: 15px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* 3. Toolbar: Tìm kiếm & Xuất Excel */
+    .table-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+    .search-filter-group {
+      display: flex;
+      gap: 10px;
+      flex: 1;
+      max-width: 450px;
+    }
+    .category-pill {
+      font-size: 0.75rem;
+      padding: 3px 8px;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.08);
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    /* 4. Hũ mục tiêu tiết kiệm */
+    .goals-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 14px;
+      margin-top: 15px;
+    }
+    .goal-card {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 12px;
+      padding: 14px;
+    }
+    .goal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .goal-progress-bg {
+      background: rgba(255, 255, 255, 0.1);
+      height: 8px;
+      border-radius: 4px;
+      overflow: hidden;
+      margin: 8px 0;
+    }
+    .goal-progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #10b981, #059669);
+      transition: width 0.4s ease;
+    }
+
+    @media (max-width: 768px) {
+      .gamification-bar { grid-template-columns: 1fr; }
+      .charts-grid { grid-template-columns: 1fr; }
+      .search-filter-group { max-width: 100%; }
+    }
   </style>
 </head>
 <body>
@@ -668,6 +811,20 @@
         </button>
       </div>
     </header>
+    <!-- 1. LINH VẬT CẢM XÚC & CHUỖI KỶ LUẬT (STREAK) -->
+    <div class="gamification-bar">
+      <div class="glass mascot-box" id="mascot-container">
+        <div class="mascot-face" id="mascot-avatar">😎</div>
+        <div class="mascot-text">
+          <div class="mascot-tag" id="mascot-status" style="color: #10b981;">Tài chính ổn định!</div>
+          <div id="mascot-quote" style="color: var(--text-muted);">Bạn đang kiểm soát dòng tiền rất tốt, cứ phát huy nhé!</div>
+        </div>
+      </div>
+      <div class="streak-badge">
+        <i class="fa-solid fa-fire"></i>
+        <span>Chuỗi: <span id="disp-streak-days">0</span> ngày kỷ luật</span>
+      </div>
+    </div>
 
     <!-- Top KPI Overview -->
     <div class="kpi-grid">
@@ -732,6 +889,21 @@
         </div>
       </div>
     </div>
+    <!-- 2. KHU VỰC 2 BIỂU ĐỒ (DONUT & BAR CHART) -->
+    <div class="charts-grid">
+      <div class="glass chart-card">
+        <div class="chart-title"><i class="fa-solid fa-chart-pie" style="color: #ec4899;"></i> Tỷ trọng Chi tiêu Tháng</div>
+        <div style="position: relative; height: 210px;">
+          <canvas id="categoryDonutChart"></canvas>
+        </div>
+      </div>
+      <div class="glass chart-card">
+        <div class="chart-title"><i class="fa-solid fa-chart-column" style="color: #6366f1;"></i> Thực chi vs Hạn mức 7 ngày gần nhất</div>
+        <div style="position: relative; height: 210px;">
+          <canvas id="weeklyBarChart"></canvas>
+        </div>
+      </div>
+    </div>
 
     <!-- Main Grid -->
     <div class="main-grid">
@@ -759,12 +931,42 @@
               <input type="date" id="exp-date" required>
             </div>
           </div>
+          <!-- Chọn danh mục chi tiêu -->
+            <div class="form-group" style="margin-bottom: 12px;">
+              <label for="exp-category">Danh mục chi tiêu</label>
+              <select id="exp-category" required style="width: 100%; padding: 10px 14px; border-radius: 10px; background: rgba(255,255,255,0.06); color: white; border: 1px solid rgba(255,255,255,0.15);">
+                <option value="food" style="background: #111827;">🍜 Ăn uống</option>
+                <option value="transport" style="background: #111827;">⛽ Di chuyển / Xăng xe</option>
+                <option value="shopping" style="background: #111827;">🛍️ Mua sắm</option>
+                <option value="entertainment" style="background: #111827;">🎮 Giải trí / Bạn bè</option>
+                <option value="health" style="background: #111827;">💊 Sức khỏe / Thuốc men</option>
+                <option value="other" style="background: #111827;">📦 Chi phí khác</option>
+              </select>
+            </div>
           <button type="submit" class="btn btn-gradient" style="width: 100%; justify-content: center; margin-top: 4px;">
             <i class="fa-solid fa-plus"></i> Thêm khoản chi
           </button>
         </form>
 
         <h4 style="margin: 20px 0 12px 0; font-size: 0.9rem; color: var(--text-muted);">Lịch sử gần đây</h4>
+        <!-- THANH CÔNG CỤ: TÌM KIẾM, LỌC & XUẤT BÁO CÁO -->
+          <div class="table-toolbar" style="margin-bottom: 12px;">
+            <div class="search-filter-group" style="display: flex; gap: 8px; flex: 1;">
+              <input type="text" id="filter-search-input" placeholder="🔍 Tìm khoản chi..." style="padding: 8px 12px; font-size: 0.85rem; flex: 1; border-radius: 8px; background: rgba(255,255,255,0.06); color: white; border: 1px solid rgba(255,255,255,0.15);">
+              <select id="filter-cat-select" style="padding: 8px 10px; font-size: 0.85rem; border-radius: 8px; background: rgba(255,255,255,0.06); color: white; border: 1px solid rgba(255,255,255,0.15);">
+                <option value="all" style="background: #111827;">Tất cả</option>
+                <option value="food" style="background: #111827;">🍜 Ăn uống</option>
+                <option value="transport" style="background: #111827;">⛽ Di chuyển</option>
+                <option value="shopping" style="background: #111827;">🛍️ Mua sắm</option>
+                <option value="entertainment" style="background: #111827;">🎮 Giải trí</option>
+                <option value="health" style="background: #111827;">💊 Sức khỏe</option>
+                <option value="other" style="background: #111827;">📦 Khác</option>
+              </select>
+            </div>
+            <button type="button" id="btn-export-csv" class="btn" style="background: rgba(16, 185, 129, 0.2); border: 1px solid #10b981; color: #34d399; font-size: 0.85rem; padding: 8px 12px; border-radius: 8px; cursor: pointer;">
+              <i class="fa-solid fa-file-excel"></i> Xuất CSV
+            </button>
+          </div>
         <ul id="expense-list" class="item-list"></ul>
       </div>
 
@@ -799,6 +1001,29 @@
       </div>
     </div>
   </div>
+  <!-- 3. HŨ TÍCH LŨY ƯỚC MƠ (SAVINGS GOALS) -->
+    <div class="glass" style="padding: 24px; margin-top: 24px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+        <h3 style="display: flex; align-items: center; gap: 8px; font-size: 1.1rem;">
+          <i class="fa-solid fa-piggy-bank" style="color: #10b981;"></i> Hũ Tích Lũy Ước Mơ
+        </h3>
+        <button type="button" id="btn-toggle-goal-form" class="btn btn-gradient" style="padding: 6px 14px; font-size: 0.85rem;">
+          <i class="fa-solid fa-plus"></i> Mục tiêu mới
+        </button>
+      </div>
+
+      <!-- Form tạo mục tiêu mới -->
+      <form id="form-new-goal" style="display: none; background: rgba(255,255,255,0.03); padding: 14px; border-radius: 10px; margin-bottom: 15px;">
+        <div style="display: grid; grid-template-columns: 1fr 1fr auto; gap: 10px;">
+          <input type="text" id="goal-name-input" placeholder="Tên mục tiêu (VD: Mua iPhone, Du lịch...)" required style="padding: 8px 12px; border-radius: 8px; background: rgba(255,255,255,0.06); color: white; border: 1px solid rgba(255,255,255,0.15);">
+          <input type="number" id="goal-target-input" placeholder="Số tiền cần đạt (VNĐ)" required style="padding: 8px 12px; border-radius: 8px; background: rgba(255,255,255,0.06); color: white; border: 1px solid rgba(255,255,255,0.15);">
+          <button type="submit" class="btn" style="background: #10b981; color: white; border-radius: 8px; padding: 8px 16px;">Lưu mục tiêu</button>
+        </div>
+      </form>
+
+      <!-- Danh sách thẻ mục tiêu -->
+      <div id="goals-container" class="goals-grid"></div>
+    </div>
 
   <!-- Modal Thiết Lập Ngân Sách Tháng -->
   <div id="modal-settings" class="modal-overlay">
@@ -1258,6 +1483,363 @@
     });
 
     document.getElementById('exp-date').value = new Date().toISOString().split('T')[0];
+    /* ========================================================
+       TÍNH NĂNG MỚI: MASCOT, BIỂU ĐỒ, HŨ TIẾT KIỆM & XUẤT CSV
+       ======================================================== */
+    const CATEGORIES_MAP = {
+      food: { label: "Ăn uống", icon: "🍜", color: "#f59e0b" },
+      transport: { label: "Di chuyển", icon: "⛽", color: "#3b82f6" },
+      shopping: { label: "Mua sắm", icon: "🛍️", color: "#ec4899" },
+      entertainment: { label: "Giải trí", icon: "🎮", color: "#8b5cf6" },
+      health: { label: "Sức khỏe", icon: "💊", color: "#10b981" },
+      other: { label: "Khác", icon: "📦", color: "#64748b" }
+    };
+
+    let donutChartInstance = null;
+    let barChartInstance = null;
+
+    function ensureDataSchema() {
+      if (!appData.savingsGoals) appData.savingsGoals = [];
+      if (!appData.streak) appData.streak = 0;
+      if (!appData.lastStreakDate) appData.lastStreakDate = "";
+    }
+
+    // Tự động gán danh mục khi bấm thêm khoản chi
+    const formExpenseEl = document.getElementById('form-expense');
+    if (formExpenseEl) {
+      formExpenseEl.addEventListener('submit', () => {
+        const catVal = document.getElementById('exp-category') ? document.getElementById('exp-category').value : 'other';
+        setTimeout(() => {
+          if (appData.expenses && appData.expenses.length > 0) {
+            const latest = appData.expenses[appData.expenses.length - 1];
+            if (!latest.category) {
+              latest.category = catVal;
+              saveData();
+              renderAll();
+            }
+          }
+        }, 50);
+      });
+    }
+
+    /* 1. Linh vật cảm xúc, Chuỗi kỷ luật & Chế độ sinh tồn */
+    function updateMascotAndGamification(metrics) {
+      ensureDataSchema();
+      const avatar = document.getElementById('mascot-avatar');
+      const status = document.getElementById('mascot-status');
+      const quote = document.getElementById('mascot-quote');
+      const container = document.getElementById('mascot-container');
+      const streakDisp = document.getElementById('disp-streak-days');
+
+      if (!avatar || !status || !quote || !container || !streakDisp) return;
+
+      const todayStr = new Date().toISOString().split('T')[0];
+      if (appData.lastStreakDate !== todayStr) {
+        if (metrics.todaySpent <= metrics.dailyLimit && metrics.dailyLimit > 0) {
+          appData.streak = (appData.streak || 0) + 1;
+          appData.lastStreakDate = todayStr;
+          saveData();
+          if ([3, 7, 14, 21, 30].includes(appData.streak) && typeof confetti === 'function') {
+            confetti({ particleCount: 80, spread: 60, origin: { y: 0.7 } });
+          }
+        }
+      }
+      streakDisp.textContent = appData.streak || 0;
+
+      const remainingRatio = metrics.livingBudget > 0 ? (metrics.livingRemaining / metrics.livingBudget) : 1;
+
+      if (remainingRatio < 0.1 && metrics.remainingDays > 5) {
+        container.classList.add('survival-active');
+        avatar.textContent = "😱";
+        status.textContent = "CHẾ ĐỘ SINH TỒN!";
+        status.style.color = "#ef4444";
+        quote.textContent = "Báo động đỏ! Tiền sắp cạn, ghìm cương chi tiêu tối đa thôi!";
+      } else if (metrics.todaySpent > metrics.dailyLimit && metrics.dailyLimit > 0) {
+        container.classList.remove('survival-active');
+        avatar.textContent = "😰";
+        status.textContent = "Hơi quá tay rồi!";
+        status.style.color = "#f59e0b";
+        quote.textContent = "Bạn đã tiêu vượt hạn mức hôm nay. Hãy thắt lưng buộc bụng cho các ngày tới nhé!";
+      } else {
+        container.classList.remove('survival-active');
+        avatar.textContent = "😎";
+        status.textContent = "Kiểm soát đỉnh cao!";
+        status.style.color = "#10b981";
+        quote.textContent = "Mọi khoản chi đều nằm trong quỹ đạo an toàn. Tiếp tục duy trì phong độ!";
+      }
+    }
+
+    /* 2. Biểu đồ trực quan Donut & Bar Chart */
+    function renderCharts(metrics) {
+      const catTotals = { food: 0, transport: 0, shopping: 0, entertainment: 0, health: 0, other: 0 };
+      if (appData.expenses) {
+        appData.expenses.forEach(item => {
+          const cat = item.category || 'other';
+          if (catTotals[cat] !== undefined) catTotals[cat] += Number(item.amount);
+          else catTotals.other += Number(item.amount);
+        });
+      }
+
+      const donutLabels = Object.keys(catTotals).map(k => CATEGORIES_MAP[k].label);
+      const donutValues = Object.values(catTotals);
+      const donutColors = Object.keys(catTotals).map(k => CATEGORIES_MAP[k].color);
+
+      const donutEl = document.getElementById('categoryDonutChart');
+      if (donutEl && typeof Chart !== 'undefined') {
+        const ctxDonut = donutEl.getContext('2d');
+        if (donutChartInstance) donutChartInstance.destroy();
+        donutChartInstance = new Chart(ctxDonut, {
+          type: 'doughnut',
+          data: {
+            labels: donutLabels,
+            datasets: [{
+              data: donutValues,
+              backgroundColor: donutColors,
+              borderWidth: 0
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { position: 'right', labels: { color: '#94a3b8', boxWidth: 12, font: { size: 11 } } }
+            }
+          }
+        });
+      }
+
+      const barEl = document.getElementById('weeklyBarChart');
+      if (barEl && typeof Chart !== 'undefined') {
+        const past7Days = [];
+        const spentLast7Days = [];
+        const limitsLast7Days = [];
+
+        for (let i = 6; i >= 0; i--) {
+          const d = new Date();
+          d.setDate(d.getDate() - i);
+          const dateStr = d.toISOString().split('T')[0];
+          past7Days.push(`${d.getDate()}/${d.getMonth() + 1}`);
+
+          const daySpent = (appData.expenses || [])
+            .filter(e => e.date === dateStr)
+            .reduce((sum, e) => sum + Number(e.amount), 0);
+
+          spentLast7Days.push(daySpent);
+          limitsLast7Days.push(Math.round(metrics.dailyLimit || 0));
+        }
+
+        const ctxBar = barEl.getContext('2d');
+        if (barChartInstance) barChartInstance.destroy();
+        barChartInstance = new Chart(ctxBar, {
+          type: 'bar',
+          data: {
+            labels: past7Days,
+            datasets: [
+              {
+                label: 'Thực chi',
+                data: spentLast7Days,
+                backgroundColor: '#6366f1',
+                borderRadius: 6
+              },
+              {
+                label: 'Hạn mức ngày',
+                data: limitsLast7Days,
+                type: 'line',
+                borderColor: '#f59e0b',
+                borderWidth: 2,
+                borderDash: [5, 5],
+                pointRadius: 0,
+                fill: false
+              }
+            ]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+              x: { ticks: { color: '#94a3b8' }, grid: { display: false } },
+              y: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,0.05)' } }
+            },
+            plugins: {
+              legend: { labels: { color: '#94a3b8', boxWidth: 12 } }
+            }
+          }
+        });
+      }
+    }
+
+    /* 3. Quản lý Hũ tích lũy ước mơ */
+    const btnToggleGoal = document.getElementById('btn-toggle-goal-form');
+    const formNewGoal = document.getElementById('form-new-goal');
+    const goalsContainer = document.getElementById('goals-container');
+
+    if (btnToggleGoal && formNewGoal) {
+      btnToggleGoal.addEventListener('click', () => {
+        formNewGoal.style.display = formNewGoal.style.display === 'none' ? 'block' : 'none';
+      });
+
+      formNewGoal.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const name = document.getElementById('goal-name-input').value.trim();
+        const target = Number(document.getElementById('goal-target-input').value);
+        if (!name || target <= 0) return;
+
+        ensureDataSchema();
+        appData.savingsGoals.push({
+          id: 'goal_' + Date.now(),
+          name: name,
+          target: target,
+          current: 0
+        });
+
+        saveData();
+        renderGoals();
+        formNewGoal.reset();
+        formNewGoal.style.display = 'none';
+        });
+    }
+        function renderGoals() {
+      ensureDataSchema();
+      if (!goalsContainer) return;
+      goalsContainer.innerHTML = '';
+
+      if (appData.savingsGoals.length === 0) {
+        goalsContainer.innerHTML = `<div style="color: var(--text-muted); font-size: 0.85rem; grid-column: 1/-1;">Chưa có mục tiêu tích lũy nào. Hãy tạo một hũ tiết kiệm để có thêm động lực giữ tiền!</div>`;
+        return;
+      }
+
+      appData.savingsGoals.forEach(g => {
+        const percent = Math.min(100, Math.round((g.current / g.target) * 100));
+        const card = document.createElement('div');
+        card.className = 'goal-card';
+        card.innerHTML = `
+          <div class="goal-header">
+            <span style="font-weight: 600;">🎯 ${g.name}</span>
+            <button onclick="deleteGoal('${g.id}')" style="background:none; border:none; color: #ef4444; cursor:pointer;"><i class="fa-solid fa-trash"></i></button>
+          </div>
+          <div style="font-size: 0.82rem; color: var(--text-muted);">
+            Đã có: <b style="color: #34d399;">${formatCurrency(g.current)}</b> / ${formatCurrency(g.target)}
+          </div>
+          <div class="goal-progress-bg">
+            <div class="goal-progress-fill" style="width: ${percent}%;"></div>
+          </div>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px;">
+            <span style="font-size: 0.8rem; font-weight: 700; color: #34d399;">${percent}%</span>
+            <button onclick="depositToGoal('${g.id}')" class="btn" style="padding: 4px 10px; font-size: 0.78rem; background: rgba(16,185,129,0.2); border: 1px solid #10b981; color:#34d399;">
+              <i class="fa-solid fa-plus"></i> Nạp tiền
+            </button>
+          </div>
+        `;
+        goalsContainer.appendChild(card);
+      });
+    }
+
+    window.depositToGoal = function(goalId) {
+      const amount = prompt("Nhập số tiền muốn bỏ vào hũ tích lũy (VNĐ):");
+      const num = Number(amount);
+      if (num > 0) {
+        const goal = appData.savingsGoals.find(g => g.id === goalId);
+        if (goal) {
+          goal.current += num;
+          saveData();
+          renderGoals();
+          if (goal.current >= goal.target && typeof confetti === 'function') {
+            confetti({ particleCount: 100, spread: 70 });
+            alert(`🎉 Chúc mừng! Bạn đã hoàn thành mục tiêu: ${goal.name}!`);
+          }
+        }
+      }
+    };
+
+    window.deleteGoal = function(goalId) {
+      if (confirm("Bạn có chắc muốn xóa mục tiêu này?")) {
+        appData.savingsGoals = appData.savingsGoals.filter(g => g.id !== goalId);
+        saveData();
+        renderGoals();
+      }
+    };
+
+    /* 4. Bộ lọc & Xuất file CSV / Excel */
+    const searchInput = document.getElementById('filter-search-input');
+    const catSelect = document.getElementById('filter-cat-select');
+    if (searchInput) searchInput.addEventListener('input', renderExpenseListWithFilter);
+    if (catSelect) catSelect.addEventListener('change', renderExpenseListWithFilter);
+
+    function renderExpenseListWithFilter() {
+      const keyword = searchInput ? searchInput.value.toLowerCase() : '';
+      const catFilter = catSelect ? catSelect.value : 'all';
+      const listEl = document.getElementById('expense-list');
+      if (!listEl) return;
+      listEl.innerHTML = '';
+
+      const filtered = (appData.expenses || []).filter(item => {
+        const matchName = (item.desc || item.name || '').toLowerCase().includes(keyword);
+        const matchCat = catFilter === 'all' || (item.category || 'other') === catFilter;
+        return matchName && matchCat;
+      });
+
+      if (filtered.length === 0) {
+        listEl.innerHTML = `<li style="text-align: center; color: var(--text-muted); padding: 15px;">Không tìm thấy khoản chi phù hợp.</li>`;
+        return;
+      }
+
+      filtered.slice().reverse().forEach(item => {
+        const catInfo = CATEGORIES_MAP[item.category] || CATEGORIES_MAP.other;
+        const li = document.createElement('li');
+        li.style.cssText = "display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.05);";
+        li.innerHTML = `
+          <div>
+            <div style="font-weight: 500;">${item.desc || item.name}</div>
+            <div style="font-size: 0.75rem; color: var(--text-muted); display: flex; gap: 6px; align-items: center; margin-top: 3px;">
+              <span>${item.date}</span>
+              <span class="category-pill">${catInfo.icon} ${catInfo.label}</span>
+            </div>
+          </div>
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <b style="color: #ef4444;">-${formatCurrency(item.amount)}</b>
+            <button onclick="deleteExpense('${item.id}')" style="background:none; border:none; color: var(--text-muted); cursor:pointer;"><i class="fa-solid fa-xmark"></i></button>
+          </div>
+        `;
+        listEl.appendChild(li);
+      });
+    }
+
+    const btnExport = document.getElementById('btn-export-csv');
+    if (btnExport) {
+      btnExport.addEventListener('click', () => {
+        if (!appData.expenses || appData.expenses.length === 0) {
+          alert("Chưa có dữ liệu chi tiêu để xuất báo cáo!");
+          return;
+        }
+
+        let csvContent = "\uFEFFNgày,Nội dung chi tiêu,Danh mục,Số tiền (VNĐ)\n";
+        appData.expenses.forEach(e => {
+          const catLabel = (CATEGORIES_MAP[e.category] || CATEGORIES_MAP.other).label;
+          const desc = `"${(e.desc || e.name || '').replace(/"/g, '""')}"`;
+          csvContent += `${e.date},${desc},${catLabel},${e.amount}\n`;
+        });
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.setAttribute("href", url);
+        link.setAttribute("download", `SmartBudget_BaoCao_${new Date().toISOString().split('T')[0]}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      });
+    }
+
+    // Kết nối tự động vào renderAll
+    const originalRenderAll = window.renderAll;
+    window.renderAll = function() {
+      if (typeof originalRenderAll === 'function') originalRenderAll();
+      const metrics = calculateBudget();
+      updateMascotAndGamification(metrics);
+      renderCharts(metrics);
+      renderGoals();
+      renderExpenseListWithFilter();
+    };
   </script>
 </body>
 </html>
