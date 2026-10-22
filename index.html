@@ -1,0 +1,1263 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SmartBudget — Quản Lý Ngân Sách Thông Minh</title>
+  
+  <!-- Font chữ Plus Jakarta Sans -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+  <!-- Firebase Compat SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+
+  <style>
+    :root {
+      --bg-dark: #0a0e17;
+      --card-bg: rgba(23, 32, 54, 0.7);
+      --card-border: rgba(255, 255, 255, 0.08);
+      --accent-primary: #6366f1;
+      --accent-gradient: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+      --accent-emerald: #10b981;
+      --accent-amber: #f59e0b;
+      --accent-rose: #f43f5e;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      background-image: 
+        radial-gradient(circle at 15% 15%, rgba(99, 102, 241, 0.18) 0%, transparent 40%),
+        radial-gradient(circle at 85% 85%, rgba(168, 85, 247, 0.15) 0%, transparent 45%);
+      color: var(--text-main);
+      min-height: 100vh;
+    }
+
+    /* Glassmorphism Panel */
+    .glass {
+      background: var(--card-bg);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      border: 1px solid var(--card-border);
+      border-radius: 20px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+    }
+
+    /* ========================================================
+       1. GIAO DIỆN MÀN HÌNH ĐĂNG NHẬP (AUTH WALL)
+       ======================================================== */
+    #login-screen {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 9999;
+      background: rgba(10, 14, 23, 0.85);
+      backdrop-filter: blur(14px);
+      padding: 20px;
+    }
+
+    .login-card {
+      width: 100%;
+      max-width: 420px;
+      padding: 40px 32px;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      animation: fadeIn 0.4s ease-out;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(15px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .login-logo {
+      width: 64px;
+      height: 64px;
+      border-radius: 18px;
+      background: var(--accent-gradient);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.8rem;
+      margin-bottom: 16px;
+      box-shadow: 0 8px 24px rgba(99, 102, 241, 0.4);
+    }
+
+    .login-title {
+      font-size: 1.45rem;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      margin-bottom: 6px;
+    }
+
+    .login-subtitle {
+      font-size: 0.88rem;
+      color: var(--text-muted);
+      margin-bottom: 24px;
+    }
+
+    .login-tab-pill {
+      display: flex;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 4px;
+      width: 100%;
+      margin-bottom: 24px;
+    }
+
+    .login-tab-item {
+      flex: 1;
+      padding: 9px 0;
+      font-size: 0.85rem;
+      font-weight: 600;
+      border-radius: 9px;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .login-tab-item.active {
+      background: rgba(255, 255, 255, 0.12);
+      color: #fff;
+    }
+
+    .btn-google-login {
+      width: 100%;
+      padding: 13px 18px;
+      background: #ffffff;
+      color: #1e293b;
+      border: none;
+      border-radius: 12px;
+      font-size: 0.95rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      cursor: pointer;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.25);
+      transition: all 0.25s ease;
+      margin-bottom: 14px;
+    }
+
+    .btn-google-login:hover {
+      background: #f1f5f9;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(255, 255, 255, 0.2);
+    }
+
+    .btn-guest {
+      background: transparent;
+      border: 1px solid var(--card-border);
+      color: var(--text-muted);
+      padding: 10px 18px;
+      border-radius: 12px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      width: 100%;
+      transition: all 0.2s;
+    }
+
+    .btn-guest:hover {
+      background: rgba(255, 255, 255, 0.06);
+      color: #fff;
+    }
+
+    /* ========================================================
+       2. GIAO DIỆN CHÍNH (DASHBOARD)
+       ======================================================== */
+    #main-dashboard {
+      display: none; /* Mặc định ẩn cho đến khi đăng nhập */
+      max-width: 1160px;
+      margin: 0 auto;
+      padding: 24px 20px 60px 20px;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 28px;
+      padding: 16px 24px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 1.35rem;
+      font-weight: 800;
+    }
+
+    .brand-icon {
+      width: 42px;
+      height: 42px;
+      border-radius: 12px;
+      background: var(--accent-gradient);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.2rem;
+    }
+
+    .user-profile {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .user-avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      border: 2px solid var(--accent-primary);
+    }
+
+    .btn {
+      padding: 10px 18px;
+      border-radius: 12px;
+      font-size: 0.88rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      border: none;
+      transition: all 0.25s ease;
+      color: white;
+    }
+
+    .btn-gradient {
+      background: var(--accent-gradient);
+      box-shadow: 0 4px 14px rgba(99, 102, 241, 0.3);
+    }
+
+    .btn-glass {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid var(--card-border);
+    }
+
+    .btn-glass:hover {
+      background: rgba(255, 255, 255, 0.15);
+    }
+
+    /* KPI Cards */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .kpi-card {
+      padding: 20px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .kpi-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 4px;
+      height: 100%;
+      background: var(--accent-primary);
+    }
+
+    .kpi-title {
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      font-weight: 700;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .kpi-value {
+      font-size: 1.45rem;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+    }
+
+    .kpi-sub {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      margin-top: 6px;
+    }
+
+    /* Daily Limit Hero */
+    .daily-hero {
+      padding: 26px;
+      margin-bottom: 28px;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 20px;
+      border-left: 6px solid var(--accent-emerald);
+      transition: border-color 0.4s ease;
+    }
+
+    .daily-hero.status-safe { border-left-color: var(--accent-emerald); }
+    .daily-hero.status-warning { border-left-color: var(--accent-amber); }
+    .daily-hero.status-danger { border-left-color: var(--accent-rose); }
+
+    .daily-limit-badge {
+      font-size: 2.3rem;
+      font-weight: 800;
+      letter-spacing: -1px;
+    }
+
+    .daily-hero.status-safe .daily-limit-badge { color: var(--accent-emerald); }
+    .daily-hero.status-warning .daily-limit-badge { color: var(--accent-amber); }
+    .daily-hero.status-danger .daily-limit-badge { color: var(--accent-rose); }
+
+    .alert-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      margin-top: 8px;
+    }
+
+    .alert-safe { background: rgba(16, 185, 129, 0.15); color: #34d399; }
+    .alert-warning { background: rgba(245, 158, 11, 0.15); color: #fbbf24; }
+    .alert-danger { background: rgba(244, 63, 94, 0.15); color: #fb7185; }
+
+    .progress-box {
+      width: 100%;
+      margin-top: 18px;
+    }
+
+    .progress-labels {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+
+    .progress-bar-bg {
+      height: 12px;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      width: 0%;
+      background: var(--accent-gradient);
+      border-radius: 8px;
+      transition: width 0.6s ease;
+    }
+
+    /* Content Layout */
+    .main-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+    }
+
+    @media (max-width: 860px) {
+      .main-grid { grid-template-columns: 1fr; }
+    }
+
+    .panel {
+      padding: 24px;
+    }
+
+    .panel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--card-border);
+    }
+
+    .panel-title {
+      font-size: 1.1rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .form-group {
+      margin-bottom: 14px;
+    }
+
+    label {
+      display: block;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+
+    input {
+      width: 100%;
+      padding: 12px 14px;
+      background: rgba(15, 23, 42, 0.7);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      color: white;
+      font-size: 0.92rem;
+      outline: none;
+    }
+
+    input:focus {
+      border-color: var(--accent-primary);
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.25);
+    }
+
+    .item-list {
+      list-style: none;
+      max-height: 360px;
+      overflow-y: auto;
+    }
+
+    .list-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 14px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.04);
+      border-radius: 12px;
+      margin-bottom: 10px;
+    }
+
+    .item-left {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .item-title {
+      font-size: 0.95rem;
+      font-weight: 600;
+    }
+
+    .item-date {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    .item-amount {
+      font-weight: 700;
+      font-size: 0.98rem;
+    }
+
+    .btn-delete {
+      background: none;
+      border: none;
+      color: #64748b;
+      cursor: pointer;
+      padding: 6px;
+      margin-left: 10px;
+    }
+
+    .btn-delete:hover {
+      color: var(--accent-rose);
+    }
+
+    .event-tag {
+      font-size: 0.72rem;
+      padding: 3px 8px;
+      border-radius: 6px;
+      background: rgba(168, 85, 247, 0.18);
+      color: #c084fc;
+      margin-left: 6px;
+    }
+
+    .status-badge {
+      cursor: pointer;
+      font-size: 0.75rem;
+      padding: 4px 10px;
+      border-radius: 8px;
+      font-weight: 600;
+    }
+
+    .status-unpaid { background: rgba(245, 158, 11, 0.15); color: #fbbf24; }
+    .status-paid { background: rgba(16, 185, 129, 0.15); color: #34d399; }
+
+    /* Modal */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(8px);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 100;
+    }
+
+    .modal-box {
+      width: 90%;
+      max-width: 440px;
+      padding: 28px;
+    }
+    /* Style bổ sung cho Form Đăng nhập & Đăng ký tài khoản */
+    .auth-form {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-top: 10px;
+    }
+    .auth-divider {
+      display: flex;
+      align-items: center;
+      text-align: center;
+      margin: 14px 0 10px 0;
+      color: var(--text-muted);
+      font-size: 0.75rem;
+      width: 100%;
+    }
+    .auth-divider::before, .auth-divider::after {
+      content: '';
+      flex: 1;
+      border-bottom: 1px solid var(--card-border);
+    }
+    .auth-divider:not(:empty)::before { margin-right: .6em; }
+    .auth-divider:not(:empty)::after { margin-left: .6em; }
+    .auth-error {
+      font-size: 0.78rem;
+      color: #fb7185;
+      text-align: left;
+      line-height: 1.4;
+      display: none;
+      background: rgba(244, 63, 94, 0.1);
+      padding: 8px 12px;
+      border-radius: 8px;
+      border: 1px solid rgba(244, 63, 94, 0.2);
+    }
+    .password-hint {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      text-align: left;
+      line-height: 1.3;
+      margin-top: -4px;
+    }
+  </style>
+</head>
+<body>
+
+ <!-- ========================================================
+       CỔNG ĐĂNG NHẬP / ĐĂNG KÝ (AUTH WALL)
+       ======================================================== -->
+  <div id="login-screen">
+    <div class="glass login-card">
+      <div class="login-logo">
+        <i class="fa-solid fa-wallet"></i>
+      </div>
+      <div class="login-title">SmartBudget</div>
+      <div class="login-subtitle">Hệ thống Quản lý Chi tiêu Cá nhân Thông minh</div>
+
+      <!-- Tab chuyển đổi giữa Đăng nhập và Đăng ký -->
+      <div class="login-tab-pill">
+        <div class="login-tab-item active" id="tab-login-btn">Đăng nhập</div>
+        <div class="login-tab-item" id="tab-register-btn">Đăng ký tài khoản</div>
+      </div>
+
+      <!-- KHUNG 1: ĐĂNG NHẬP -->
+      <div id="pane-login" style="width: 100%;">
+        <!-- Nút Đăng nhập Google -->
+        <button id="btn-login-gate" class="btn-google-login">
+          <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google logo" width="20" height="20">
+          <span>Đăng nhập với Google</span>
+        </button>
+
+        <div class="auth-divider">HOẶC BẰNG TÀI KHOẢN</div>
+
+        <form id="form-account-login" class="auth-form">
+          <input type="tel" id="login-phone" placeholder="Số điện thoại" required>
+          <input type="password" id="login-password" placeholder="Mật khẩu" required>
+          <div id="login-error-msg" class="auth-error"></div>
+          <button type="submit" class="btn btn-gradient" style="justify-content: center; width: 100%;">
+            <i class="fa-solid fa-right-to-bracket"></i> Đăng nhập
+          </button>
+        </form>
+
+        <button id="btn-guest-gate" class="btn-guest" style="margin-top: 14px;">
+          <i class="fa-solid fa-arrow-right-to-bracket"></i> Dùng thử không cần đăng nhập
+        </button>
+      </div>
+
+      <!-- KHUNG 2: ĐĂNG KÝ -->
+      <div id="pane-register" style="width: 100%; display: none;">
+        <form id="form-account-register" class="auth-form">
+          <input type="text" id="reg-name" placeholder="Họ và tên của bạn" required>
+          <input type="tel" id="reg-phone" placeholder="Số điện thoại (dùng để đăng nhập)" required>
+          <input type="password" id="reg-password" placeholder="Mật khẩu" required>
+          <div class="password-hint">
+            * Yêu cầu: Trên 8 ký tự, có ít nhất 1 chữ viết HOA và 1 ký tự đặc biệt (!@#$%^&*...)
+          </div>
+          <input type="password" id="reg-password-confirm" placeholder="Nhập lại mật khẩu" required>
+          
+          <div id="reg-error-msg" class="auth-error"></div>
+          
+          <button type="submit" class="btn btn-gradient" style="justify-content: center; width: 100%; margin-top: 6px;">
+            <i class="fa-solid fa-user-plus"></i> Hoàn tất đăng ký
+          </button>
+        </form>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ========================================================
+       MÀN HÌNH CHÍNH (DASHBOARD) - CHỈ MỞ SAU KHI ĐĂNG NHẬP
+       ======================================================== -->
+  <div id="main-dashboard">
+    <!-- Header -->
+    <header class="glass">
+      <div class="brand">
+        <div class="brand-icon">
+          <i class="fa-solid fa-wallet"></i>
+        </div>
+        <span>SmartBudget</span>
+      </div>
+      
+      <div class="user-profile">
+        <img id="user-avatar" src="" alt="Avatar" class="user-avatar">
+        <div>
+          <div id="user-name" style="font-weight: 700; font-size: 0.92rem;">Người dùng</div>
+          <div id="user-email" style="font-size: 0.75rem; color: var(--text-muted);">Đã kết nối</div>
+        </div>
+        <button id="btn-open-settings" class="btn btn-gradient" style="margin-left: 12px;">
+          <i class="fa-solid fa-sliders"></i> Ngân sách tháng
+        </button>
+        <button id="btn-logout" class="btn btn-glass" title="Đăng xuất">
+          <i class="fa-solid fa-arrow-right-from-bracket"></i>
+        </button>
+      </div>
+    </header>
+
+    <!-- Top KPI Overview -->
+    <div class="kpi-grid">
+      <div class="glass kpi-card">
+        <div class="kpi-title">
+          <span>Tổng ngân sách tháng</span>
+          <i class="fa-solid fa-vault"></i>
+        </div>
+        <div class="kpi-value" id="disp-total-budget">0 ₫</div>
+        <div class="kpi-sub" id="disp-month-info">Tháng này</div>
+      </div>
+
+      <div class="glass kpi-card" style="--accent-primary: #a855f7;">
+        <div class="kpi-title">
+          <span>Quỹ dịp đặc biệt</span>
+          <i class="fa-solid fa-cake-candles"></i>
+        </div>
+        <div class="kpi-value" id="disp-special-events">0 ₫</div>
+        <div class="kpi-sub" id="disp-special-count">0 sự kiện dự trù</div>
+      </div>
+
+      <div class="glass kpi-card" style="--accent-primary: #38bdf8;">
+        <div class="kpi-title">
+          <span>Đã chi sinh hoạt</span>
+          <i class="fa-solid fa-receipt"></i>
+        </div>
+        <div class="kpi-value" id="disp-total-spent">0 ₫</div>
+        <div class="kpi-sub" id="disp-percent-spent">0% ngân sách sinh hoạt</div>
+      </div>
+
+      <div class="glass kpi-card" style="--accent-primary: #10b981;">
+        <div class="kpi-title">
+          <span>Còn lại sinh hoạt</span>
+          <i class="fa-solid fa-piggy-bank"></i>
+        </div>
+        <div class="kpi-value" id="disp-living-remaining">0 ₫</div>
+        <div class="kpi-sub" id="disp-days-left">Còn 0 ngày</div>
+      </div>
+    </div>
+
+    <!-- Daily Hero Limit Card -->
+    <div id="daily-card" class="glass daily-hero status-safe">
+      <div>
+        <h2 style="font-size: 1.05rem; color: var(--text-muted); font-weight: 600;">Hạn mức chi tiêu ngày hôm nay</h2>
+        <div class="daily-limit-badge" id="disp-daily-limit">0 ₫</div>
+        <div id="alert-pill-box" class="alert-pill alert-safe">
+          <i class="fa-solid fa-circle-check"></i>
+          <span id="alert-text">Chi tiêu trong hạn mức an toàn</span>
+        </div>
+      </div>
+      <div style="text-align: right; min-width: 180px;">
+        <div style="font-size: 0.85rem; color: var(--text-muted);">Đã tiêu hôm nay</div>
+        <div style="font-size: 1.5rem; font-weight: 800; margin-top: 4px;" id="disp-today-spent">0 ₫</div>
+      </div>
+      <div class="progress-box">
+        <div class="progress-labels">
+          <span>Tiến trình sử dụng ngân sách sinh hoạt</span>
+          <span id="progress-percent">0%</span>
+        </div>
+        <div class="progress-bar-bg">
+          <div id="progress-bar-fill" class="progress-bar-fill"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Grid -->
+    <div class="main-grid">
+      <!-- Cột 1: Chi tiêu hàng ngày -->
+      <div class="glass panel">
+        <div class="panel-header">
+          <div class="panel-title">
+            <i class="fa-solid fa-cart-shopping" style="color: var(--accent-primary);"></i>
+            <span>Chi Tiêu Hàng Ngày</span>
+          </div>
+        </div>
+        
+        <form id="form-expense">
+          <div class="form-group">
+            <label for="exp-desc">Mô tả khoản chi</label>
+            <input type="text" id="exp-desc" placeholder="Ví dụ: Cơm trưa, tiền xăng, siêu thị..." required>
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <div class="form-group">
+              <label for="exp-amount">Số tiền (VNĐ)</label>
+              <input type="number" id="exp-amount" placeholder="0" min="1000" step="1000" required>
+            </div>
+            <div class="form-group">
+              <label for="exp-date">Ngày chi</label>
+              <input type="date" id="exp-date" required>
+            </div>
+          </div>
+          <button type="submit" class="btn btn-gradient" style="width: 100%; justify-content: center; margin-top: 4px;">
+            <i class="fa-solid fa-plus"></i> Thêm khoản chi
+          </button>
+        </form>
+
+        <h4 style="margin: 20px 0 12px 0; font-size: 0.9rem; color: var(--text-muted);">Lịch sử gần đây</h4>
+        <ul id="expense-list" class="item-list"></ul>
+      </div>
+
+      <!-- Cột 2: Quỹ Dịp Đặc Biệt -->
+      <div class="glass panel">
+        <div class="panel-header">
+          <div class="panel-title">
+            <i class="fa-solid fa-champagne-glasses" style="color: #a855f7;"></i>
+            <span>Dịp Đặc Biệt Trong Tháng</span>
+          </div>
+          <span style="font-size: 0.72rem; color: var(--text-muted); background: rgba(255,255,255,0.06); padding: 4px 8px; border-radius: 6px;">
+            Đã tách khỏi hạn mức ngày
+          </span>
+        </div>
+
+        <form id="form-special">
+          <div class="form-group">
+            <label for="spec-name">Tên dịp / Sự kiện</label>
+            <input type="text" id="spec-name" placeholder="Ví dụ: Sinh nhật bạn, Đám cưới, Mua quà..." required>
+          </div>
+          <div class="form-group">
+            <label for="spec-amount">Khoản tiền dự kiến (VNĐ)</label>
+            <input type="number" id="spec-amount" placeholder="0" min="1000" step="1000" required>
+          </div>
+          <button type="submit" class="btn btn-glass" style="width: 100%; justify-content: center; border-color: rgba(168, 85, 247, 0.4); color: #c084fc;">
+            <i class="fa-solid fa-calendar-plus"></i> Thêm sự kiện dự trù
+          </button>
+        </form>
+
+        <h4 style="margin: 20px 0 12px 0; font-size: 0.9rem; color: var(--text-muted);">Danh sách sự kiện</h4>
+        <ul id="special-list" class="item-list"></ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Thiết Lập Ngân Sách Tháng -->
+  <div id="modal-settings" class="modal-overlay">
+    <div class="glass modal-box">
+      <h3 style="margin-bottom: 8px; font-size: 1.25rem;">Thiết Lập Ngân Sách</h3>
+      <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 20px;">
+        Nhập tổng số tiền bạn dự định tiêu dùng tối đa cho cả tháng này.
+      </p>
+      <form id="form-settings">
+        <div class="form-group">
+          <label for="input-monthly-budget">Tổng ngân sách tháng (VNĐ)</label>
+          <input type="number" id="input-monthly-budget" placeholder="6000000" min="100000" step="50000" required>
+        </div>
+        <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px;">
+          <button type="button" id="btn-close-modal" class="btn btn-glass">Hủy</button>
+          <button type="submit" class="btn btn-gradient">Lưu thay đổi</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    /* ========================================================
+       1. CẤU HÌNH FIREBASE AUTHENTICATION
+       ======================================================== */
+    const firebaseConfig = {
+      apiKey: "AIzaSyA5ZfkTgMvWzgib0_NcjxC_FY_mYy9Usg4",
+      authDomain: "project-quanlichitieu-1dcc7.firebaseapp.com",
+      projectId: "project-quanlichitieu-1dcc7",
+      storageBucket: "project-quanlichitieu-1dcc7.firebasestorage.app",
+      messagingSenderId: "980242644531",
+      appId: "1:980242644531:web:4bc9d5cefad921496fad46",
+      measurementId: "G-GL2Y6QMWT7"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const provider = new firebase.auth.GoogleAuthProvider();
+
+    let currentUser = null;
+
+    /* ========================================================
+       2. QUẢN LÝ MÀN HÌNH ĐĂNG NHẬP / ĐĂNG KÝ (AUTH GATE)
+       ======================================================== */
+    const loginScreen = document.getElementById('login-screen');
+    const mainDashboard = document.getElementById('main-dashboard');
+    const tabLoginBtn = document.getElementById('tab-login-btn');
+    const tabRegisterBtn = document.getElementById('tab-register-btn');
+    const paneLogin = document.getElementById('pane-login');
+    const paneRegister = document.getElementById('pane-register');
+
+    // Chuyển tab Đăng nhập / Đăng ký
+    tabLoginBtn.addEventListener('click', () => {
+      tabLoginBtn.classList.add('active');
+      tabRegisterBtn.classList.remove('active');
+      paneLogin.style.display = 'block';
+      paneRegister.style.display = 'none';
+      document.getElementById('login-error-msg').style.display = 'none';
+    });
+
+    tabRegisterBtn.addEventListener('click', () => {
+      tabRegisterBtn.classList.add('active');
+      tabLoginBtn.classList.remove('active');
+      paneLogin.style.display = 'none';
+      paneRegister.style.display = 'block';
+      document.getElementById('reg-error-msg').style.display = 'none';
+    });
+
+    // 1. Đăng nhập bằng Google
+    document.getElementById('btn-login-gate').addEventListener('click', () => {
+      auth.signInWithPopup(provider).catch(error => {
+        console.error("Lỗi đăng nhập Google:", error);
+        alert("Lỗi đăng nhập: " + error.message);
+      });
+    });
+
+    // 2. Đăng ký tài khoản (Kiểm tra SĐT & Mật khẩu mạnh)
+    document.getElementById('form-account-register').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const name = document.getElementById('reg-name').value.trim();
+      const phone = document.getElementById('reg-phone').value.trim();
+      const password = document.getElementById('reg-password').value;
+      const confirmPassword = document.getElementById('reg-password-confirm').value;
+      const errorBox = document.getElementById('reg-error-msg');
+
+      errorBox.style.display = 'none';
+
+      // Kiểm tra số điện thoại (từ 9 đến 11 số)
+      const phoneRegex = /^[0-9]{9,11}$/;
+      if (!phoneRegex.test(phone)) {
+        errorBox.textContent = "Số điện thoại không hợp lệ (phải gồm 9-11 chữ số).";
+        errorBox.style.display = 'block';
+        return;
+      }
+
+      // Kiểm tra mật khẩu: trên 8 ký tự, có viết hoa, có ký tự đặc biệt
+      const hasUpperCase = /[A-Z]/.test(password);
+      const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>_\-]/.test(password);
+
+      if (password.length <= 8) {
+        errorBox.textContent = "Mật khẩu phải dài trên 8 ký tự.";
+        errorBox.style.display = 'block';
+        return;
+      }
+      if (!hasUpperCase) {
+        errorBox.textContent = "Mật khẩu phải chứa ít nhất 1 chữ cái viết HOA.";
+        errorBox.style.display = 'block';
+        return;
+      }
+      if (!hasSpecialChar) {
+        errorBox.textContent = "Mật khẩu phải chứa ít nhất 1 ký tự đặc biệt (!@#$%...).";
+        errorBox.style.display = 'block';
+        return;
+      }
+      if (password !== confirmPassword) {
+        errorBox.textContent = "Mật khẩu xác nhận không khớp.";
+        errorBox.style.display = 'block';
+        return;
+      }
+
+      // Lưu tài khoản vào hệ thống (LocalStorage)
+      const usersList = JSON.parse(localStorage.getItem('smartbudget_registered_users') || '[]');
+      if (usersList.some(u => u.phone === phone)) {
+        errorBox.textContent = "Số điện thoại này đã được đăng ký tài khoản.";
+        errorBox.style.display = 'block';
+        return;
+      }
+
+      const newUser = {
+        uid: 'user_phone_' + phone,
+        displayName: name,
+        phone: phone,
+        password: password
+      };
+
+      usersList.push(newUser);
+      localStorage.setItem('smartbudget_registered_users', JSON.stringify(usersList));
+
+      alert("Đăng ký tài khoản thành công! Bạn có thể đăng nhập ngay.");
+      document.getElementById('form-account-register').reset();
+      tabLoginBtn.click();
+      document.getElementById('login-phone').value = phone;
+    });
+
+    // 3. Đăng nhập bằng tài khoản số điện thoại & mật khẩu
+    document.getElementById('form-account-login').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const phone = document.getElementById('login-phone').value.trim();
+      const password = document.getElementById('login-password').value;
+      const errorBox = document.getElementById('login-error-msg');
+      errorBox.style.display = 'none';
+
+      const usersList = JSON.parse(localStorage.getItem('smartbudget_registered_users') || '[]');
+      const foundUser = usersList.find(u => u.phone === phone && u.password === password);
+
+      if (!foundUser) {
+        errorBox.textContent = "Số điện thoại hoặc mật khẩu không chính xác.";
+        errorBox.style.display = 'block';
+        return;
+      }
+
+      currentUser = {
+        uid: foundUser.uid,
+        displayName: foundUser.displayName,
+        email: 'SĐT: ' + foundUser.phone
+      };
+      showDashboard(currentUser);
+    });
+
+    // 4. Chế độ khách vãng lai
+    document.getElementById('btn-guest-gate').addEventListener('click', () => {
+      currentUser = { uid: 'guest', displayName: 'Khách trải nghiệm', email: 'Chế độ dùng thử' };
+      showDashboard(currentUser);
+    });
+
+    // 5. Đăng xuất
+    document.getElementById('btn-logout').addEventListener('click', () => {
+      if (auth.currentUser) {
+        auth.signOut();
+      }
+      currentUser = null;
+      mainDashboard.style.display = 'none';
+      loginScreen.style.display = 'flex';
+      tabLoginBtn.click();
+    });
+
+    // 6. Lắng nghe trạng thái đăng nhập Firebase
+    auth.onAuthStateChanged(user => {
+      if (user) {
+        currentUser = user;
+        showDashboard(user);
+      } else if (!currentUser || (currentUser.uid !== 'guest' && !currentUser.uid.startsWith('user_phone_'))) {
+        loginScreen.style.display = 'flex';
+        mainDashboard.style.display = 'none';
+      }
+    });
+
+    function showDashboard(user) {
+      loginScreen.style.display = 'none';
+      mainDashboard.style.display = 'block';
+      document.getElementById('user-name').textContent = user.displayName || 'Người dùng';
+      document.getElementById('user-email').textContent = user.email || '';
+      document.getElementById('user-avatar').src = user.photoURL || 'https://ui-avatars.com/api/?background=6366f1&color=fff&name=' + encodeURIComponent(user.displayName || 'U');
+      loadData();
+    }
+
+    /* ========================================================
+       3. DỮ LIỆU & LOGIC TÍNH TOÁN (LOCALSTORAGE THEO TỪNG USER)
+       ======================================================== */
+    function getStorageKey() {
+      return currentUser ? `budget_app_${currentUser.uid}` : 'budget_app_guest';
+    }
+
+    let appData = {
+      monthlyBudget: 6000000,
+      expenses: [],
+      specialEvents: []
+    };
+
+    function loadData() {
+      const saved = localStorage.getItem(getStorageKey());
+      if (saved) {
+        try {
+          appData = JSON.parse(saved);
+        } catch (e) {
+          console.error("Lỗi parse dữ liệu:", e);
+        }
+      } else {
+        appData = { monthlyBudget: 6000000, expenses: [], specialEvents: [] };
+      }
+      renderAll();
+    }
+
+    function saveData() {
+      localStorage.setItem(getStorageKey(), JSON.stringify(appData));
+      renderAll();
+    }
+
+    function formatCurrency(amount) {
+      return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
+    }
+
+    function getMonthMetrics() {
+      const now = new Date();
+      const currentYear = now.getFullYear();
+      const currentMonth = now.getMonth();
+      const todayDate = now.getDate();
+      const totalDays = new Date(currentYear, currentMonth + 1, 0).getDate();
+      const remainingDays = Math.max(1, totalDays - todayDate + 1);
+
+      return { totalDays, todayDate, remainingDays, currentMonth: currentMonth + 1, currentYear };
+    }
+
+    function calculateBudget() {
+      const { remainingDays } = getMonthMetrics();
+      const totalSpecialAllocated = appData.specialEvents.reduce((sum, item) => sum + Number(item.amount), 0);
+      const livingBudget = Math.max(0, appData.monthlyBudget - totalSpecialAllocated);
+      const totalSpent = appData.expenses.reduce((sum, item) => sum + Number(item.amount), 0);
+      const livingRemaining = livingBudget - totalSpent;
+      const dailyLimit = livingRemaining > 0 ? (livingRemaining / remainingDays) : 0;
+
+      const todayStr = new Date().toISOString().split('T')[0];
+      const todaySpent = appData.expenses
+        .filter(exp => exp.date === todayStr)
+        .reduce((sum, item) => sum + Number(item.amount), 0);
+
+      return { totalSpecialAllocated, livingBudget, totalSpent, livingRemaining, dailyLimit, todaySpent, remainingDays };
+    }
+
+    function renderAll() {
+      const metrics = calculateBudget();
+      const monthInfo = getMonthMetrics();
+
+      document.getElementById('disp-total-budget').textContent = formatCurrency(appData.monthlyBudget);
+      document.getElementById('disp-month-info').textContent = `Tháng ${monthInfo.currentMonth}/${monthInfo.currentYear} (${monthInfo.totalDays} ngày)`;
+      document.getElementById('disp-special-events').textContent = formatCurrency(metrics.totalSpecialAllocated);
+      document.getElementById('disp-special-count').textContent = `${appData.specialEvents.length} sự kiện dự trù`;
+
+      document.getElementById('disp-total-spent').textContent = formatCurrency(metrics.totalSpent);
+      const percentSpent = metrics.livingBudget > 0 ? Math.min(100, (metrics.totalSpent / metrics.livingBudget) * 100) : 100;
+      document.getElementById('disp-percent-spent').textContent = `${percentSpent.toFixed(1)}% ngân sách sinh hoạt`;
+
+      document.getElementById('disp-living-remaining').textContent = formatCurrency(metrics.livingRemaining);
+      document.getElementById('disp-days-left').textContent = `Còn ${metrics.remainingDays} ngày (kể cả hôm nay)`;
+
+      document.getElementById('disp-daily-limit').textContent = formatCurrency(metrics.dailyLimit);
+      document.getElementById('disp-today-spent').textContent = formatCurrency(metrics.todaySpent);
+
+      const progressPercent = metrics.livingBudget > 0 ? Math.min(100, Math.round((metrics.totalSpent / metrics.livingBudget) * 100)) : 100;
+      document.getElementById('progress-percent').textContent = `${progressPercent}%`;
+      const progressBar = document.getElementById('progress-bar-fill');
+      progressBar.style.width = `${progressPercent}%`;
+
+      const heroCard = document.getElementById('daily-card');
+      const alertPill = document.getElementById('alert-pill-box');
+      const alertText = document.getElementById('alert-text');
+
+      heroCard.classList.remove('status-safe', 'status-warning', 'status-danger');
+      alertPill.classList.remove('alert-safe', 'alert-warning', 'alert-danger');
+
+      if (metrics.livingRemaining <= 0 || metrics.totalSpent > metrics.livingBudget) {
+        heroCard.classList.add('status-danger');
+        alertPill.classList.add('alert-danger');
+        alertPill.querySelector('i').className = "fa-solid fa-triangle-exclamation";
+        alertText.textContent = "Cảnh báo: Bạn đã chi tiêu vượt quá ngân sách tháng!";
+        progressBar.style.background = "linear-gradient(135deg, #f43f5e, #fb7185)";
+      } else if (metrics.todaySpent > metrics.dailyLimit) {
+        heroCard.classList.add('status-warning');
+        alertPill.classList.add('alert-warning');
+        alertPill.querySelector('i').className = "fa-solid fa-circle-exclamation";
+        alertText.textContent = `Hôm nay đã chi vượt hạn mức ${formatCurrency(metrics.todaySpent - metrics.dailyLimit)}`;
+        progressBar.style.background = "linear-gradient(135deg, #f59e0b, #fbbf24)";
+      } else {
+        heroCard.classList.add('status-safe');
+        alertPill.classList.add('alert-safe');
+        alertPill.querySelector('i').className = "fa-solid fa-circle-check";
+        alertText.textContent = "Chi tiêu trong hạn mức an toàn";
+        progressBar.style.background = "linear-gradient(135deg, #10b981, #6366f1)";
+      }
+
+      renderExpenseList();
+      renderSpecialEventsList();
+    }
+
+    function renderExpenseList() {
+      const list = document.getElementById('expense-list');
+      list.innerHTML = '';
+      if (appData.expenses.length === 0) {
+        list.innerHTML = `<li style="text-align:center; padding: 20px; color: var(--text-muted); font-size: 0.85rem;">Chưa có khoản chi tiêu nào.</li>`;
+        return;
+      }
+
+      const sorted = [...appData.expenses].sort((a, b) => new Date(b.date) - new Date(a.date));
+      sorted.forEach(item => {
+        const li = document.createElement('li');
+        li.className = 'list-item';
+        li.innerHTML = `
+          <div class="item-left">
+            <span class="item-title">${escapeHtml(item.desc)}</span>
+            <span class="item-date"><i class="fa-regular fa-calendar"></i> ${item.date}</span>
+          </div>
+          <div style="display:flex; align-items:center;">
+            <span class="item-amount" style="color: #fb7185;">-${formatCurrency(item.amount)}</span>
+            <button class="btn-delete" onclick="deleteExpense('${item.id}')" title="Xóa">
+              <i class="fa-solid fa-trash-can"></i>
+            </button>
+          </div>
+        `;
+        list.appendChild(li);
+      });
+    }
+
+    function renderSpecialEventsList() {
+      const list = document.getElementById('special-list');
+      list.innerHTML = '';
+      if (appData.specialEvents.length === 0) {
+        list.innerHTML = `<li style="text-align:center; padding: 20px; color: var(--text-muted); font-size: 0.85rem;">Chưa có sự kiện dự trù nào.</li>`;
+        return;
+      }
+
+      appData.specialEvents.forEach(item => {
+        const li = document.createElement('li');
+        li.className = 'list-item';
+        const isPaid = !!item.isPaid;
+        li.innerHTML = `
+          <div class="item-left">
+            <span class="item-title">${escapeHtml(item.name)} <span class="event-tag">Dịp riêng</span></span>
+            <span class="item-date">Dự trù: ${formatCurrency(item.amount)}</span>
+          </div>
+          <div style="display:flex; align-items:center; gap: 8px;">
+            <span class="status-badge ${isPaid ? 'status-paid' : 'status-unpaid'}" onclick="toggleSpecialPaid('${item.id}')">
+              ${isPaid ? '<i class="fa-solid fa-check"></i> Đã chi' : '<i class="fa-regular fa-clock"></i> Chưa chi'}
+            </span>
+            <button class="btn-delete" onclick="deleteSpecialEvent('${item.id}')" title="Xóa">
+              <i class="fa-solid fa-trash-can"></i>
+            </button>
+          </div>
+        `;
+        list.appendChild(li);
+      });
+    }
+
+    function escapeHtml(str) {
+      return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    /* Thao tác chi tiêu */
+    document.getElementById('form-expense').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const desc = document.getElementById('exp-desc').value.trim();
+      const amount = parseFloat(document.getElementById('exp-amount').value);
+      const date = document.getElementById('exp-date').value;
+
+      if (!desc || isNaN(amount) || amount <= 0 || !date) return;
+
+      appData.expenses.push({ id: 'exp_' + Date.now(), desc, amount, date });
+      document.getElementById('exp-desc').value = '';
+      document.getElementById('exp-amount').value = '';
+      saveData();
+    });
+
+    function deleteExpense(id) {
+      if (confirm('Xóa khoản chi này?')) {
+        appData.expenses = appData.expenses.filter(i => i.id !== id);
+        saveData();
+      }
+    }
+
+    /* Thao tác sự kiện đặc biệt */
+    document.getElementById('form-special').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const name = document.getElementById('spec-name').value.trim();
+      const amount = parseFloat(document.getElementById('spec-amount').value);
+
+      if (!name || isNaN(amount) || amount <= 0) return;
+
+      appData.specialEvents.push({ id: 'spec_' + Date.now(), name, amount, isPaid: false });
+      document.getElementById('spec-name').value = '';
+      document.getElementById('spec-amount').value = '';
+      saveData();
+    });
+
+    function toggleSpecialPaid(id) {
+      const item = appData.specialEvents.find(s => s.id === id);
+      if (item) {
+        item.isPaid = !item.isPaid;
+        saveData();
+      }
+    }
+
+    function deleteSpecialEvent(id) {
+      if (confirm('Xóa dịp đặc biệt này?')) {
+        appData.specialEvents = appData.specialEvents.filter(s => s.id !== id);
+        saveData();
+      }
+    }
+
+    /* Modal cài đặt */
+    const modalSettings = document.getElementById('modal-settings');
+    document.getElementById('btn-open-settings').addEventListener('click', () => {
+      document.getElementById('input-monthly-budget').value = appData.monthlyBudget;
+      modalSettings.style.display = 'flex';
+    });
+
+    document.getElementById('btn-close-modal').addEventListener('click', () => {
+      modalSettings.style.display = 'none';
+    });
+
+    document.getElementById('form-settings').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const val = parseFloat(document.getElementById('input-monthly-budget').value);
+      if (!isNaN(val) && val > 0) {
+        appData.monthlyBudget = val;
+        saveData();
+        modalSettings.style.display = 'none';
+      }
+    });
+
+    document.getElementById('exp-date').value = new Date().toISOString().split('T')[0];
+  </script>
+</body>
+</html>
